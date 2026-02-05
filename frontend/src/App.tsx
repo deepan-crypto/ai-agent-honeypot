@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
 import honeypotAPI from './lib/honeypotApi';
-import Login from './components/Login';
 import ChatDisplay from './components/ChatDisplay';
 import IntelligenceFeed from './components/IntelligenceFeed';
-import PhoneInput from './components/PhoneInput';
-import { Activity, AlertCircle, CheckCircle2, LogOut } from 'lucide-react';
+import { Activity, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface ChatMessage {
   role: string;
@@ -22,20 +20,17 @@ interface IntelligenceItem {
 }
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [intelligence, setIntelligence] = useState<IntelligenceItem[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [whatsappNumbers, setWhatsappNumbers] = useState<string[]>([]);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Check backend health on mount
   useEffect(() => {
-    if (isAuthenticated) {
-      checkBackendHealth();
-    }
-  }, [isAuthenticated]);
+    checkBackendHealth();
+  }, []);
 
   // Setup realtime subscriptions for threat intelligence
   useEffect(() => {
@@ -73,113 +68,65 @@ function App() {
     }
   };
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setMessages([]);
-    setIntelligence([]);
-    setCurrentSessionId(null);
-    setWhatsappNumbers([]);
-  };
-
-  const handleAddNumber = async (phoneNumber: string) => {
-    // Add number to monitored list
-    setWhatsappNumbers((prev) => [...prev, phoneNumber]);
-
-    // In a real implementation, you would:
-    // 1. Store this in database
-    // 2. Configure Twilio to only respond to these numbers
-    // 3. Create a session for this number
-
-    console.log(`Added phone number to honeypot: ${phoneNumber}`);
-  };
-
-  const startDemoConversation = async () => {
+  const handleSendMessage = async (userMessage: string) => {
     setError(null);
+    setIsLoading(true);
 
     try {
-      // Initial conversation
-      const initialChat = [
-        {
-          role: 'user' as const,
-          content: 'Hello, I received a call that my bank account has suspicious activity.',
-        },
-        {
-          role: 'assistant' as const,
-          content: 'Yes madam, I am calling from your bank security department.',
-        },
-        {
-          role: 'user' as const,
-          content: 'Oh no! What should I do?',
-        },
-      ];
+      let sessionId = currentSessionId;
 
-      // Handoff to AI agent
-      const response = await honeypotAPI.handoff(initialChat);
-
-      if (response.success) {
-        setCurrentSessionId(response.data.sessionId);
-
-        const chatMessages = [
-          ...initialChat.map((msg, idx) => ({
-            role: msg.role,
-            content: msg.content,
-            timestamp: new Date(Date.now() - (initialChat.length - idx) * 1000).toISOString(),
-          })),
+      // If no session exists, create one with the first message
+      if (!sessionId) {
+        const initialChat = [
           {
-            role: 'assistant',
-            content: response.data.message,
-            timestamp: new Date().toISOString(),
+            role: 'user' as const,
+            content: userMessage,
           },
         ];
 
-        setMessages(chatMessages);
+        const response = await honeypotAPI.handoff(initialChat);
 
-        if (response.data.initialIntelligence.length > 0) {
-          setIntelligence(
-            response.data.initialIntelligence.map((intel, idx) => ({
-              id: `initial-${idx}`,
-              type: intel.type,
-              value: intel.value,
-              severity: 'high',
-              extracted_at: new Date().toISOString(),
-            }))
-          );
+        if (response.success) {
+          sessionId = response.data.sessionId;
+          setCurrentSessionId(sessionId);
+
+          const chatMessages = [
+            {
+              role: 'user',
+              content: userMessage,
+              timestamp: new Date().toISOString(),
+            },
+            {
+              role: 'assistant',
+              content: response.data.message,
+              timestamp: new Date().toISOString(),
+            },
+          ];
+
+          setMessages(chatMessages);
+
+          if (response.data.initialIntelligence.length > 0) {
+            setIntelligence(
+              response.data.initialIntelligence.map((intel, idx) => ({
+                id: `initial-${idx}`,
+                type: intel.type,
+                value: intel.value,
+                severity: 'high',
+                extracted_at: new Date().toISOString(),
+              }))
+            );
+          }
         }
-
-        // Simulate scammer conversation
-        simulateScammerConversation(response.data.sessionId);
-      }
-    } catch (error) {
-      console.error('Error starting demo:', error);
-      setError('Failed to start demo. Check backend connection.');
-      setBackendStatus('offline');
-    }
-  };
-
-  const simulateScammerConversation = async (sessionId: string) => {
-    const scammerMessages = [
-      { text: 'First, I need to verify your identity. Can you confirm your UPI ID?', delay: 3000 },
-      { text: 'Also, for security purposes, please click this link: https://fake-bank-security.com/app', delay: 6000 },
-      { text: 'To unblock your account, send ₹100 to merchant@paytm', delay: 9000 },
-      { text: 'Madam, are you still there? My contact number is 9876543210 if you need help.', delay: 12000 },
-    ];
-
-    for (const msg of scammerMessages) {
-      await new Promise((resolve) => setTimeout(resolve, msg.delay));
-
-      try {
-        const response = await honeypotAPI.sendMessage(sessionId, msg.text);
+      } else {
+        // Session exists, send message to existing session
+        const response = await honeypotAPI.sendMessage(sessionId, userMessage);
 
         if (response.success) {
           setMessages((prev) => [
             ...prev,
             {
               role: 'user',
-              content: msg.text,
+              content: userMessage,
               timestamp: new Date().toISOString(),
             },
             {
@@ -200,15 +147,15 @@ function App() {
             setIntelligence((prev) => [...newIntel, ...prev]);
           }
         }
-      } catch (error) {
-        console.error('Error sending message:', error);
       }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setError('Failed to send message. Check backend connection.');
+      setBackendStatus('offline');
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
@@ -218,8 +165,8 @@ function App() {
             <div className="flex items-center gap-3">
               <Activity className="w-8 h-8 text-blue-600" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Agentic AI Honeypot</h1>
-                <p className="text-sm text-gray-600">AI-powered scam detection & intelligence extraction</p>
+                <h1 className="text-2xl font-bold text-gray-900">AI Scam Analyzer</h1>
+                <p className="text-sm text-gray-600">Analyze messages for spam/scam content & extract threat intelligence</p>
               </div>
             </div>
 
@@ -242,15 +189,6 @@ function App() {
                   <span className="text-sm text-gray-500">Checking backend...</span>
                 )}
               </div>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="text-sm font-medium">Logout</span>
-              </button>
             </div>
           </div>
         </div>
@@ -269,31 +207,14 @@ function App() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-180px)]">
-          {/* Left Panel - Phone Input & Demo */}
-          <div className="lg:col-span-1 flex flex-col gap-6">
-            <PhoneInput
-              onAddNumber={handleAddNumber}
-              whatsappNumbers={whatsappNumbers}
-            />
-
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Test Demo</h3>
-              <button
-                onClick={startDemoConversation}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 rounded-lg transition-all"
-              >
-                Start Demo Conversation
-              </button>
-              <p className="text-xs text-gray-500 mt-2">
-                Simulates a scammer conversation to see how Martha responds
-              </p>
-            </div>
-          </div>
-
-          {/* Middle Panel - Chat */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-180px)]">
+          {/* Left Panel - Chat */}
           <div className="lg:col-span-1">
-            <ChatDisplay messages={messages} />
+            <ChatDisplay
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading}
+            />
           </div>
 
           {/* Right Panel - Intelligence */}

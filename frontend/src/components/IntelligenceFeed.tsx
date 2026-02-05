@@ -102,7 +102,7 @@ export default function IntelligenceFeed({ intelligence }: IntelligenceFeedProps
             <div className="text-center">
               <Shield className="w-16 h-16 mx-auto mb-3 opacity-20" />
               <p className="text-lg">No threats detected yet</p>
-              <p className="text-sm">AI will extract data automatically</p>
+              <p className="text-sm">Send messages to extract threat intelligence...</p>
             </div>
           </div>
         ) : (
