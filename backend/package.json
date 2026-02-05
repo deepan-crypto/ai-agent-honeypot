@@ -1,0 +1,32 @@
+{
+    "name": "agentic-honeypot-backend",
+    "version": "1.0.0",
+    "description": "Backend API for Agentic AI Honeypot System with integrated AI agent",
+    "main": "server.js",
+    "type": "module",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node --watch server.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "honeypot",
+        "ai-agent",
+        "scam-prevention",
+        "threat-intelligence"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@anthropic-ai/sdk": "^0.30.1",
+        "@supabase/supabase-js": "^2.39.7",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.1",
+        "express": "^4.18.2",
+        "express-rate-limit": "^7.1.5",
+        "helmet": "^7.1.0",
+        "langchain": "^0.1.17",
+        "morgan": "^1.10.0",
+        "uuid": "^9.0.1"
+    }
+}
