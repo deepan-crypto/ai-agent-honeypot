@@ -61,6 +61,49 @@ export const createSession = async (chatHistory) => {
     }
 };
 
+// Create a new agent session with a specific session ID (for competition API)
+export const createSessionWithId = async (sessionId, chatHistory) => {
+    try {
+        const supabase = getSupabase();
+
+        // Format chat history for storage
+        const formattedHistory = chatHistory.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: new Date().toISOString()
+        }));
+
+        // Create session in database with provided sessionId
+        const { data, error } = await supabase
+            .from('sessions')
+            .insert([
+                {
+                    session_id: sessionId,
+                    is_active: true,
+                    persona_name: 'Martha',
+                    chat_history: formattedHistory,
+                    started_at: new Date().toISOString(),
+                    last_activity: new Date().toISOString()
+                }
+            ])
+            .select();
+
+        if (error) {
+            console.error('Error creating session with ID:', error);
+            throw error;
+        }
+
+        console.log(`✅ Created new session with ID: ${sessionId}`);
+        return {
+            sessionId,
+            session: data[0]
+        };
+    } catch (error) {
+        console.error('Failed to create session with ID:', error);
+        throw error;
+    }
+};
+
 // Get session from database
 export const getSession = async (sessionId) => {
     try {
@@ -277,6 +320,7 @@ export const getSessionIntelligence = async (sessionId) => {
 
 export default {
     createSession,
+    createSessionWithId,
     getSession,
     updateSession,
     generateResponse,
