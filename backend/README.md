@@ -3,6 +3,19 @@
 A unified Node.js backend service that combines Express API with a LangChain-powered AI agent for trapping scammers and extracting threat intelligence.
 
 ## 🎯 Overview
+        🚨 Scammer: "I need your bank details to verify your account"
+
+        🤖 Martha: "Oh dear, let me see... I'm not very good with these 
+computer things. Can you give me a moment? I need to find my 
+reading glasses first..."
+
+       🚨 Scammer: "Yes madam, send money to merchant@paytm"
+
+       💾 SYSTEM: [THREAT DETECTED! UPI: merchant@paytm - LOGGED]
+
+       🤖 Martha: "Oh my, merchant... what? I'm writing this down but 
+my hands are shaky. Is that M-E-R-C-H-A-N-T? My grandson David 
+usually helps me..."
 
 This backend acts as a middle-layer where users can "hand off" scammer chats to an AI agent named "Martha" - a elderly persona designed to engage scammers, stall for time, and automatically extract threat intelligence like UPI IDs, bank account numbers, and phishing URLs.
 
