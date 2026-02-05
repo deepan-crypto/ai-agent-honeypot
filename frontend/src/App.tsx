@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
 import honeypotAPI from './lib/honeypotApi';
+import Login from './components/Login';
 import ChatDisplay from './components/ChatDisplay';
 import IntelligenceFeed from './components/IntelligenceFeed';
-import ActivateAgentButton from './components/ActivateAgentButton';
-import { Activity, AlertCircle, CheckCircle2 } from 'lucide-react';
+import PhoneInput from './components/PhoneInput';
+import { Activity, AlertCircle, CheckCircle2, LogOut } from 'lucide-react';
 
 interface ChatMessage {
   role: string;
@@ -21,17 +22,20 @@ interface IntelligenceItem {
 }
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [intelligence, setIntelligence] = useState<IntelligenceItem[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [whatsappNumbers, setWhatsappNumbers] = useState<string[]>([]);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [error, setError] = useState<string | null>(null);
 
   // Check backend health on mount
   useEffect(() => {
-    checkBackendHealth();
-  }, []);
+    if (isAuthenticated) {
+      checkBackendHealth();
+    }
+  }, [isAuthenticated]);
 
   // Setup realtime subscriptions for threat intelligence
   useEffect(() => {
@@ -69,20 +73,43 @@ function App() {
     }
   };
 
-  const handleActivateAgent = async () => {
-    setIsLoading(true);
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setMessages([]);
+    setIntelligence([]);
+    setCurrentSessionId(null);
+    setWhatsappNumbers([]);
+  };
+
+  const handleAddNumber = async (phoneNumber: string) => {
+    // Add number to monitored list
+    setWhatsappNumbers((prev) => [...prev, phoneNumber]);
+
+    // In a real implementation, you would:
+    // 1. Store this in database
+    // 2. Configure Twilio to only respond to these numbers
+    // 3. Create a session for this number
+
+    console.log(`Added phone number to honeypot: ${phoneNumber}`);
+  };
+
+  const startDemoConversation = async () => {
     setError(null);
 
     try {
-      // Initial conversation from user to scammer
+      // Initial conversation
       const initialChat = [
         {
           role: 'user' as const,
-          content: 'Hello, I received a call that my bank account has suspicious activity. Is this you calling?',
+          content: 'Hello, I received a call that my bank account has suspicious activity.',
         },
         {
           role: 'assistant' as const,
-          content: 'Yes madam, I am calling from your bank security department. We have detected unauthorized transactions on your account.',
+          content: 'Yes madam, I am calling from your bank security department.',
         },
         {
           role: 'user' as const,
@@ -96,7 +123,6 @@ function App() {
       if (response.success) {
         setCurrentSessionId(response.data.sessionId);
 
-        // Set initial messages
         const chatMessages = [
           ...initialChat.map((msg, idx) => ({
             role: msg.role,
@@ -112,7 +138,6 @@ function App() {
 
         setMessages(chatMessages);
 
-        // Set initial intelligence if any
         if (response.data.initialIntelligence.length > 0) {
           setIntelligence(
             response.data.initialIntelligence.map((intel, idx) => ({
@@ -125,25 +150,22 @@ function App() {
           );
         }
 
-        // Start simulated scammer conversation
+        // Simulate scammer conversation
         simulateScammerConversation(response.data.sessionId);
       }
     } catch (error) {
-      console.error('Error activating agent:', error);
-      setError('Failed to activate agent. Make sure the backend is running.');
+      console.error('Error starting demo:', error);
+      setError('Failed to start demo. Check backend connection.');
       setBackendStatus('offline');
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const simulateScammerConversation = async (sessionId: string) => {
-    // Simulate scammer messages over time
     const scammerMessages = [
       { text: 'First, I need to verify your identity. Can you confirm your UPI ID?', delay: 3000 },
-      { text: 'Also, for security purposes, we need you to install our secure app. Please click this link: https://fake-bank-security.com/app', delay: 6000 },
-      { text: 'To unblock your account immediately, please send ₹100 to verify your account. Send to merchant@paytm', delay: 9000 },
-      { text: 'Madam, are you still there? We need to act quickly to protect your account. My contact number is 9876543210 if you need help.', delay: 12000 },
+      { text: 'Also, for security purposes, please click this link: https://fake-bank-security.com/app', delay: 6000 },
+      { text: 'To unblock your account, send ₹100 to merchant@paytm', delay: 9000 },
+      { text: 'Madam, are you still there? My contact number is 9876543210 if you need help.', delay: 12000 },
     ];
 
     for (const msg of scammerMessages) {
@@ -153,7 +175,6 @@ function App() {
         const response = await honeypotAPI.sendMessage(sessionId, msg.text);
 
         if (response.success) {
-          // Add scammer message
           setMessages((prev) => [
             ...prev,
             {
@@ -168,7 +189,6 @@ function App() {
             },
           ]);
 
-          // Update intelligence if any was extracted
           if (response.data.intelExtracted && response.data.threats.length > 0) {
             const newIntel = response.data.threats.map((threat, idx) => ({
               id: `${sessionId}-${Date.now()}-${idx}`,
@@ -186,24 +206,9 @@ function App() {
     }
   };
 
-  const handleDeactivateAgent = async () => {
-    if (!currentSessionId) return;
-
-    setIsLoading(true);
-    try {
-      await honeypotAPI.deactivateSession(currentSessionId);
-      setCurrentSessionId(null);
-      setMessages([]);
-      setIntelligence([]);
-    } catch (error) {
-      console.error('Error deactivating agent:', error);
-      setError('Failed to deactivate session');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const isActive = currentSessionId !== null;
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
@@ -218,23 +223,34 @@ function App() {
               </div>
             </div>
 
-            {/* Backend Status Indicator */}
-            <div className="flex items-center gap-2">
-              {backendStatus === 'online' && (
-                <>
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                  <span className="text-sm text-green-600 font-medium">Backend Online</span>
-                </>
-              )}
-              {backendStatus === 'offline' && (
-                <>
-                  <AlertCircle className="w-5 h-5 text-red-500" />
-                  <span className="text-sm text-red-600 font-medium">Backend Offline</span>
-                </>
-              )}
-              {backendStatus === 'checking' && (
-                <span className="text-sm text-gray-500">Checking backend...</span>
-              )}
+            <div className="flex items-center gap-4">
+              {/* Backend Status */}
+              <div className="flex items-center gap-2">
+                {backendStatus === 'online' && (
+                  <>
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    <span className="text-sm text-green-600 font-medium">Backend Online</span>
+                  </>
+                )}
+                {backendStatus === 'offline' && (
+                  <>
+                    <AlertCircle className="w-5 h-5 text-red-500" />
+                    <span className="text-sm text-red-600 font-medium">Backend Offline</span>
+                  </>
+                )}
+                {backendStatus === 'checking' && (
+                  <span className="text-sm text-gray-500">Checking backend...</span>
+                )}
+              </div>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="text-sm font-medium">Logout</span>
+              </button>
             </div>
           </div>
         </div>
@@ -254,18 +270,33 @@ function App() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-180px)]">
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            <ActivateAgentButton
-              isActive={isActive}
-              isLoading={isLoading}
-              onActivate={handleActivateAgent}
-              onDeactivate={handleDeactivateAgent}
+          {/* Left Panel - Phone Input & Demo */}
+          <div className="lg:col-span-1 flex flex-col gap-6">
+            <PhoneInput
+              onAddNumber={handleAddNumber}
+              whatsappNumbers={whatsappNumbers}
             />
-            <div className="flex-1">
-              <ChatDisplay messages={messages} />
+
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Test Demo</h3>
+              <button
+                onClick={startDemoConversation}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 rounded-lg transition-all"
+              >
+                Start Demo Conversation
+              </button>
+              <p className="text-xs text-gray-500 mt-2">
+                Simulates a scammer conversation to see how Martha responds
+              </p>
             </div>
           </div>
 
+          {/* Middle Panel - Chat */}
+          <div className="lg:col-span-1">
+            <ChatDisplay messages={messages} />
+          </div>
+
+          {/* Right Panel - Intelligence */}
           <div className="lg:col-span-1">
             <IntelligenceFeed intelligence={intelligence} />
           </div>
