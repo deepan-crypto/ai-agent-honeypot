@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 
 import { initializeDatabase } from './config/database.js';
 import agentRoutes from './routes/agent.routes.js';
+import whatsappRoutes from './routes/whatsapp.routes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 // Load environment variables
@@ -74,6 +75,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api', agentRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -88,7 +90,9 @@ app.get('/', (req, res) => {
             sessions: 'GET /api/sessions',
             sessionDetails: 'GET /api/sessions/:sessionId',
             intelligence: 'GET /api/intel',
-            health: 'GET /health'
+            health: 'GET /health',
+            whatsappIncoming: 'POST /api/whatsapp/incoming',
+            whatsappSessions: 'GET /api/whatsapp/sessions'
         }
     });
 });
