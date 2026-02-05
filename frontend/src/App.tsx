@@ -248,7 +248,7 @@ function App() {
               <p className="text-red-800 font-medium">{error}</p>
             </div>
             <p className="text-sm text-red-600 mt-1">
-              Make sure the backend server is running on http://localhost:3000
+              Make sure the backend server is running at {import.meta.env.VITE_BACKEND_API_URL || 'the configured URL'}
             </p>
           </div>
         )}

@@ -103,11 +103,25 @@ const startServer = async () => {
 
         // Start Express server
         app.listen(PORT, () => {
+            // Detect deployment URL
+            const isProduction = process.env.NODE_ENV === 'production';
+            const deployUrl = process.env.RENDER_EXTERNAL_URL ||
+                process.env.RAILWAY_STATIC_URL ||
+                `http://localhost:${PORT}`;
+
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             console.log(`✅ Server running on port ${PORT}`);
             console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-            console.log(`📡 API Base URL: http://localhost:${PORT}/api`);
-            console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
+
+            if (isProduction && process.env.RENDER_EXTERNAL_URL) {
+                console.log(`📡 API Base URL: ${deployUrl}/api`);
+                console.log(`🏥 Health Check: ${deployUrl}/health`);
+                console.log(`� Service URL: ${deployUrl}`);
+            } else {
+                console.log(`�📡 API Base URL: http://localhost:${PORT}/api`);
+                console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
+            }
+
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         });
     } catch (error) {
