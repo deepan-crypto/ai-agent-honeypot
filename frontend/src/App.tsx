@@ -165,7 +165,7 @@ function App() {
             <div className="flex items-center gap-3">
               <Activity className="w-8 h-8 text-blue-600" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">AI Scam Analyzer</h1>
+                <h1 className="text-2xl font-bold text-gray-900">AI Agent HoneyPot</h1>
                 <p className="text-sm text-gray-600">Analyze messages for spam/scam content & extract threat intelligence</p>
               </div>
             </div>
