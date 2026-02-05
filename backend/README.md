@@ -17,6 +17,24 @@ reading glasses first..."
 my hands are shaky. Is that M-E-R-C-H-A-N-T? My grandson David 
 usually helps me..."
 
+
+
+
+Scammer sends SMS to your number
+        ↓
+Twilio receives it
+        ↓
+Twilio forwards to: https://ai-agent-honeypot.onrender.com/api/sms
+        ↓
+Your backend processes through AI
+        ↓
+AI response sent back to Twilio
+        ↓
+Twilio sends SMS to scammer
+
+
+
+
 This backend acts as a middle-layer where users can "hand off" scammer chats to an AI agent named "Martha" - a elderly persona designed to engage scammers, stall for time, and automatically extract threat intelligence like UPI IDs, bank account numbers, and phishing URLs.
 
 ## 🏗️ Architecture
